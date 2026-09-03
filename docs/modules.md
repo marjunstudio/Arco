@@ -1,0 +1,183 @@
+# モジュール構成
+
+> **ステータス: 決定済み・未着手**
+> **現在のモジュールは `:shared` と `:androidApp` の2つだけ**（`settings.gradle.kts`）。
+> ここに書かれたモジュールはまだ1つも存在しない。以下は分割に着手する際に従う構成であり、現在の説明ではない。
+> 「`:core:model` にあるはず」と思って探さないこと。
+
+アーキテクチャの層は [architecture.md](architecture.md)、命名は [conventions.md](conventions.md)。
+
+---
+
+## 構成
+
+`core` をレイヤで切り、`feature` は体験の本流を1つにまとめる。計9モジュール。
+
+| モジュール | 責務 | 依存 |
+|---|--|--|
+| `:shared` | **umbrella。** iOS framework を吐き、Koin を束ね、`App()` の入口を持つ | 全モジュール |
+| `:core:model` | `Spot` / `Session` / `Bearing` などのドメインモデル | なし |
+| `:core:common` | `Result`、ディスパッチャ、共通拡張 | `:core:model` |
+| `:core:domain` | UseCase（抽選・距離計算・到着判定・方位ソースの選択） | `:core:model` `:core:common` `:core:data` |
+| `:core:data` | Repository の interface と実装、DataSource、永続化 | `:core:model` `:core:common` `:core:sensor` |
+| `:core:sensor` | 位置・方位・歩数・触覚の `expect`/`actual` | `:core:model` |
+| `:core:designsystem` | デザイントークンと Canvas コンポーネント | Compose のみ |
+| `:feature:explore` | ダイヤル → レーダー → 到着（本流） | `:core:domain` `:core:model` `:core:designsystem` |
+| `:feature:history` | 履歴タブ | 同上 |
+
+### 置いてはいけないもの
+
+| モジュール | 入れない |
+|---|--|
+| `:core:model` | **Compose もコルーチンも入れない。** 純粋 Kotlin に保つ。ここが汚れると全モジュールが引きずられる |
+| `:core:domain` | `Flow` の購読、権限の分岐、プラットフォーム API |
+| `:core:designsystem` | ドメインの型。`Spot` を受け取るコンポーネントは feature 側に置く |
+| `:shared` | **ロジック。** 束ねるだけ。ここに書き始めると分割した意味がなくなる |
+| `:feature:*` | 他の feature への依存 |
+
+---
+
+## 依存グラフ
+
+```
+         :androidApp                    iosApp (Swift)
+              │                              │
+              └───────────────┬──────────────┘
+                              ▼
+                          :shared                        ← umbrella
+                              │
+        ┌─────────────────────┼─────────────────────┐
+        ▼                     ▼                     │
+:feature:explore      :feature:history              │
+        │                     │                     │
+        ├─────────────────────┤                     │
+        ▼                     ▼                     ▼
+   :core:domain ───────────────────────────> :core:designsystem
+        │
+        ▼
+   :core:data ──────────> :core:sensor
+        │                      │
+        └──────────┬───────────┘
+                   ▼
+             :core:common
+                   │
+                   ▼
+             :core:model
+```
+
+### 依存のルール
+
+- **`:core:model` は何にも依存しない。** 依存を足したくなったら、それは model ではない
+- **feature 同士は依存しない。** 共有が必要になったら `core` に落とす。feature 間で `import` した時点で設計が壊れている
+- `:core:designsystem` はドメインを知らない。汎用の描画部品だけを置く
+- 循環依存はビルドが通らないが、通る形の「実質的な循環」（`:shared` 経由で参照する等）も作らない
+
+### Repository の interface を `:core:data` に置く理由
+
+`:core:domain` が `:core:data` に依存する。クリーンアーキテクチャの純粋形なら
+Repository の interface を domain 側に置いて依存を逆転させるところだが、**そうしない**。
+
+Google 公式のアーキテクチャガイドと Now in Android がこの形（Domain → Data）を採っており、
+このプロジェクトは「公式に則る」を優先すると決めたため。**判断であって、うっかりではない。**
+
+これを覆したくなったら、覆す理由を先にここへ書く。理由の書かれていない制約は次に必ず破られる。
+
+---
+
+## iOS の umbrella framework
+
+**マルチモジュール化で最初に踏む地雷**（[../AGENTS.md](../AGENTS.md#踏みやすい地雷)）。
+
+Swift 側から見える framework は `:shared` が吐く1つだけ。他のモジュールの型は、**明示的に `export` しない限り
+Swift からは存在しないのと同じ**になる。
+
+```kotlin
+// shared/build.gradle.kts
+kotlin {
+    listOf(iosArm64(), iosSimulatorArm64()).forEach { iosTarget ->
+        iosTarget.binaries.framework {
+            baseName = "Shared"
+            isStatic = true
+            export(project(":core:model"))     // ← Swift から見せたいモジュールを列挙する
+        }
+    }
+    sourceSets {
+        commonMain.dependencies {
+            api(project(":core:model"))        // ← export するものは implementation ではなく api
+            implementation(project(":core:domain"))
+        }
+    }
+}
+```
+
+2点セットで初めて効く。**片方だけだとビルドは通るのに Swift から型が見えない**、という分かりにくい失敗をする。
+
+- `export()` の対象は `api` で依存すること。`implementation` のままだと Gradle が弾く
+- **export は最小限にする。** 原則 `:core:model` と `:shared` の入口だけ。
+  UseCase や Repository を export すると、Swift 側からドメインを直接叩く道ができてしまう
+- Swift が持つのはタブバーの器だけ、という方針（[architecture.md](architecture.md#ios-側の位置づけ)）を
+  export の範囲でも守る
+
+---
+
+## Compose リソースはモジュールごとにパッケージが分かれる
+
+現在の `arco.shared.generated.resources.Res` は `:shared` に紐づいた生成物。
+モジュールを分けると生成先も分かれるため、**リソースを持つモジュールでは生成パッケージを明示する**。
+
+```kotlin
+// core/designsystem/build.gradle.kts
+compose.resources {
+    publicResClass = true                                        // 他モジュールから参照する場合
+    packageOfResClass = "com.app.arco.core.designsystem.resources"
+}
+```
+
+- 明示しないと、モジュール名から自動で決まった名前になる。後で変えると全 `import` が動く
+- **既定は `internal`。** モジュールをまたいで使うリソースは `publicResClass = true` が要る
+- 同じ画像を複数モジュールに置かない。共有するものは `:core:designsystem` に集約する
+
+---
+
+## 新規モジュールを追加する手順
+
+1. ディレクトリを作る（`core/foo/` または `feature/foo/`）
+2. `settings.gradle.kts` に `include(":core:foo")` を足す
+3. `build.gradle.kts` を書く（convention plugin があればそれを適用する。→ 次節）
+4. `android { namespace = "com.app.arco.core.foo" }` を設定する。**namespace の重複はビルドエラーになる**
+5. パッケージを `com.app.arco.core.foo` で切る（→ [conventions.md](conventions.md)）
+6. 依存を足す側の `build.gradle.kts` に `implementation(project(":core:foo"))` を書く
+7. **Swift から見せる必要があるか判断する。** 必要なら `:shared` の `export()` と `api` を両方直す
+8. このファイルの表と依存グラフを更新する
+
+Gradle Sync が通っただけでは iOS 側は検証できない。**framework を吐くところまで通す。**
+
+---
+
+## convention plugin（`build-logic`）
+
+> **未着手。モジュール分割と同時に入れる。**
+
+9モジュール分の `build.gradle.kts` を手でコピペすると、`compileSdk` や `jvmTarget` が
+必ずどこかで食い違う。**モジュールを増やす前に `build-logic` を用意する。**
+
+- `build-logic/convention` に KMP ライブラリ用・Compose 用・feature 用のプラグインを定義する
+- 各モジュールの `build.gradle.kts` は `plugins { id("arco.kmp.library") }` の数行で済ませる
+- **バージョン番号は `gradle/libs.versions.toml` にのみ書く**という既存ルールは変わらない
+  （[../AGENTS.md](../AGENTS.md#使用技術)）
+
+後から入れると9モジュール全部を書き直すことになる。順序を逆にしない。
+
+---
+
+## まだ決まっていないこと
+
+分割に着手するまで、以下は**推測で書かない**。
+
+| | 決め方 |
+|---|--|
+| 分割後の Gradle タスク名 | `./gradlew :shared:tasks --all` と `./gradlew projects` で実際に引いてから、README.md と AGENTS.md のコマンド表を直す |
+| テストの集約タスク | 同上。現在の `:shared:allTests` が何を拾うようになるかは、組んでから確認する |
+| 永続化の手段 | DataStore / SQLDelight / Room KMP のいずれか未選定（→ [architecture.md](architecture.md#プロセスが死んだときの復帰)） |
+| スポットのデータソース | 未選定。`:core:data` の中身はこれが決まらないと書けない |
+| `:feature:explore` をさらに割るか | 画面が増えて本当に苦しくなってから。先に割らない |

@@ -16,7 +16,9 @@ Kotlin Multiplatform + Compose Multiplatform（Android / iOS）。
 | | 中身 |
 |---|--|
 | [AGENTS.md](AGENTS.md) | **使用技術・設計方針・実装の決めごと・禁止事項。実装に入る前にここを読む** |
-| [docs/setup.md](docs/setup.md) | 環境構築の詳細。TEAM_ID、scheme の共有、Xcode / Android Studio の2経路 |
+| [docs/architecture.md](docs/architecture.md) | MVVM の層と依存方向、UiState の形、状態をどこに置くか |
+| [docs/modules.md](docs/modules.md) | モジュール構成と依存グラフ、iOS framework への `export` の作法 |
+| [docs/conventions.md](docs/conventions.md) | パッケージ・命名・Composable の書き方・ドメイン用語 |
 | [docs/platform-branching.md](docs/platform-branching.md) | iOS 26/18・API 31 の分岐実装 |
 | `gradle/libs.versions.toml` | 依存バージョンの唯一の真実。ドキュメントに数字は書かない |
 
@@ -31,40 +33,53 @@ Kotlin Multiplatform + Compose Multiplatform（Android / iOS）。
 |---|--|
 | JDK | 21（無ければ Gradle が自動取得する） |
 | Android Studio | Quail 4 2026.1.4 |
-| Xcode | 26 以降。Android Studio から iOS を建てる場合も必須 |
-| 実機 | **必須** |
+| Xcode | 26 以降。iOS を建てるなら必須 |
+| Kotlin Multiplatform プラグイン | Android Studio から iOS を建てるなら必須 |
 
-GPS・方位・歩数・触覚が体験の中心にあるため、**エミュレータ／シミュレータでは体験の検証ができない**。
-UI のレイアウト確認以外は実機で行う。→ [docs/setup.md](docs/setup.md#実機が必須な理由)
+GPS・方位・歩数・触覚が体験の中心にある。**歩数センサーはエミュレータに存在せず、方位は固定か無応答、
+触覚は再現されない。** レイアウトの確認以外は実機で行う。
 
 ---
 
-## 起動
+## セットアップ
 
-```bash
-git clone https://github.com/marjunstudio/Arco.git
-cd Arco
-```
+### Android
 
-**Android** — Android Studio でルートを開いて `androidApp` を実行。CLI からなら:
+Android Studio でルートを開き、Gradle Sync を通して `androidApp` を実行する。CLI からなら:
 
 ```bash
 ./gradlew :androidApp:installDebug
 ```
 
-**iOS** — 初回は `TEAM_ID` の設定と scheme の共有が必要。→ [docs/setup.md](docs/setup.md#共通の下準備)
-済んでいれば `iosApp/iosApp.xcodeproj` を Xcode で開いて実機ビルド、または Android Studio の `iosApp` 実行構成から。
+### iOS（シミュレータ）
 
----
+1. **Kotlin Multiplatform プラグインを入れる**
+   Settings → Plugins → Marketplace で「Kotlin Multiplatform」（JetBrains）を導入し、IDE を再起動する。
+   plugin id が `com.jetbrains.kmm` なのは旧称の名残で、これが現行のもの。
+   IDE ビルドに固定されているので、Android Studio を上げたらプラグインも上げる。
 
-## よく使うコマンド
+2. **Preflight checks を通す**
+   Project Environment Preflight Checks が Xcode の場所・ライセンス同意・command line tools・
+   シミュレータ検出を検査する。指摘が消えるまで先に進まない。引っかかったら大抵これで済む:
+
+   ```bash
+   sudo xcodebuild -license accept
+   sudo xcode-select -s /Applications/Xcode.app
+   ```
+
+3. **実行構成から流す**
+   Gradle Sync 後に `iosApp` 実行構成が現れる。シミュレータを選んで Run。
+   Xcode から建てるなら `iosApp/iosApp.xcodeproj` を開く。
+
+Kotlin を変更したら framework は自動で再生成される。
+
+### iOS 18 のシミュレータランタイム
+
+iOS 26 と 18 は両方見ないと崩れに気付けない。Xcode 26 には 26 系しか同梱されていない。
 
 ```bash
-./gradlew :androidApp:installDebug           # Android 実機にインストール
-./gradlew :androidApp:assembleDebug          # Android のビルドのみ
-./gradlew :shared:allTests                   # 共通ロジックのテスト（全ターゲット集約）
-./gradlew :shared:testAndroidHostTest        # JVM 側のテストのみ
-./gradlew :shared:iosSimulatorArm64Test      # iOS シミュレータ側のテストのみ
+xcrun simctl list runtimes                            # 入っているものを確認
+xcodebuild -downloadPlatform iOS -buildVersion 18.5   # 不足分を取得
 ```
 
 ---
@@ -77,4 +92,6 @@ cd Arco
 | `androidApp/` | Android の入口 |
 | `iosApp/` | iOS の入口。Swift はタブバー周辺のみ |
 
-モジュール分割は未確定。詳細は [AGENTS.md](AGENTS.md#モジュール分割は未確定)。
+マルチモジュール構成（core をレイヤで切り、feature は本流を1つに）は決定済みだが、
+**分割はまだ実施していない**。現在のモジュールは `:shared` と `:androidApp` の2つだけ。
+決めた構成は [docs/modules.md](docs/modules.md)。
