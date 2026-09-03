@@ -46,8 +46,8 @@ com.app.arco.feature.explore.component ← その画面専用の部品
 - 実装クラスに `Impl` を付けない。`Default` を使う（Now in Android に合わせる）
 - `Manager` `Helper` `Util` は使わない。何をするものか名前から分からなくなる。
   ただし既存の `GreetingUtil.kt` はテンプレート由来なので気にしなくてよい（消える）
-- **`expect`/`actual` にデザイン言語固有の語（`Glass` `Expressive` `LiquidGlass`）を入れない。**
-  → [../AGENTS.md](../AGENTS.md#ui-の共有範囲)
+- **`expect`/`actual` の名前にデザイン言語固有の語を入れない。**
+  対象の語と理由は [../AGENTS.md](../AGENTS.md#ui-の共有範囲)
 
 ### UseCase は `operator fun invoke` にする
 
@@ -106,9 +106,7 @@ fun ExploreScreen(
 
 ### 共通 UI は Material に寄せすぎない
 
-共通の Composable は iOS でもそのまま出る。素の `Button` や `TopAppBar` を多用すると iOS で違和感が出るので、
-`:core:designsystem` の自前トークンで組んだ薄いコンポーネントに寄せる。
-→ [../AGENTS.md](../AGENTS.md#共通-ui-は-material-に寄せすぎない)
+置き場所は `:core:designsystem`。規則そのものは [../AGENTS.md](../AGENTS.md#ui-の共有範囲)
 
 ### 余白を数値でハードコードしない
 
