@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: ja-JP
+
+reviews:
+  profile: chill
+  auto_review:
+    enabled: true
+    drafts: false
+  path_instructions:
+    - path: "shared/src/commonMain/**/*.kt"
+      instructions: |
+        commonMain に platform 依存の API が混入していないか確認する。
+        expect/actual の宣言が iosMain / androidMain の双方で揃っているか確認する。
+    - path: "shared/**/*.kt"
+      instructions: |
+        Compose Multiplatform の Composable では、状態のホイスティングが
+        適切に行われているか確認する。
+    - path: "iosApp/**/*.swift"
+      instructions: |
+        SwiftUI の View で重い処理を body 内に書いていないか確認する。
+    - path: "**/*.gradle.kts"
+      instructions: |
+        依存のバージョンは gradle/libs.versions.toml のバージョンカタログ経由で
+        参照されているか確認する。直書きされていれば指摘する。
+  tools:
+    detekt:
+      enabled: true
+    swiftlint:
+      enabled: true
