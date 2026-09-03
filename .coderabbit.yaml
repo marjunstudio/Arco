@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
 language: ja-JP
 
 reviews:
@@ -21,9 +22,8 @@ reviews:
       instructions: |
         依存のバージョンは gradle/libs.versions.toml のバージョンカタログ経由で
         参照されているか確認する。直書きされていれば指摘する。
-
-tools:
-  detekt:
-    enabled: true
-  swiftlint:
-    enabled: true
+  tools:
+    detekt:
+      enabled: true
+    swiftlint:
+      enabled: true
