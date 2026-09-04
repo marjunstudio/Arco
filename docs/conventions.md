@@ -1,9 +1,9 @@
 # コーディング規約
 
 > **ステータス: 決定済み・一部未着手**
-> 現在のコードは KMP ウィザードのテンプレートのままで、この規約に沿ったコードはまだ無い。
-> テンプレート由来のファイル（`Greeting.kt` / `GreetingUtil.kt` / `Platform.kt`）は実装着手時に消える前提なので、
-> **これらを規約の実例として真似しないこと。**
+> テンプレート由来のファイルは削除済み。`shared/src/commonMain/kotlin/com/app/arco/` 配下は
+> この規約に沿っている。ただし ViewModel と UiState の実例はまだ無いので、
+> **その節はコードで確かめられない。**
 
 層の考え方は [architecture.md](architecture.md)、モジュールの切り方は [modules.md](modules.md)。
 
@@ -44,8 +44,7 @@ com.app.arco.feature.explore.component ← その画面専用の部品
 | Koin module | 画面/モジュール名 + `Module` | `exploreModule` `dataModule` |
 
 - 実装クラスに `Impl` を付けない。`Default` を使う（Now in Android に合わせる）
-- `Manager` `Helper` `Util` は使わない。何をするものか名前から分からなくなる。
-  ただし既存の `GreetingUtil.kt` はテンプレート由来なので気にしなくてよい（消える）
+- `Manager` `Helper` `Util` は使わない。何をするものか名前から分からなくなる
 - **`expect`/`actual` の名前にデザイン言語固有の語を入れない。**
   対象の語と理由は [../AGENTS.md](../AGENTS.md#ui-の共有範囲)
 

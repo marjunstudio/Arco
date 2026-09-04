@@ -1,8 +1,9 @@
 # モジュール構成
 
 > **ステータス: 決定済み・未着手**
-> **現在のモジュールは `:shared` と `:androidApp` の2つだけ**（`settings.gradle.kts`）。
-> ここに書かれたモジュールはまだ1つも存在しない。以下は分割に着手する際に従う構成であり、現在の説明ではない。
+> **現在のモジュールは `:androidApp` `:shared` `:iosEntry` の3つだけ**（`settings.gradle.kts`）。
+> `core` / `feature` の分割はまだ実施しておらず、中身は `:shared` のパッケージとして存在する。
+> 以下は分割に着手する際に従う構成であり、現在の説明ではない。
 > 「`:core:model` にあるはず」と思って探さないこと。
 
 アーキテクチャの層は [architecture.md](architecture.md)、命名は [conventions.md](conventions.md)。
@@ -11,11 +12,13 @@
 
 ## 構成
 
-`core` をレイヤで切り、`feature` は体験の本流を1つにまとめる。計9モジュール。
+`core` をレイヤで切り、`feature` は体験の本流を1つにまとめる。core / feature で計9モジュール、
+これに各プラットフォームの入口が付く。
 
 | モジュール | 責務 | 依存 |
 |---|--|--|
-| `:shared` | **umbrella。** iOS framework を吐き、Koin を束ね、`App()` の入口を持つ | 全モジュール |
+| `:shared` | **umbrella。** Koin を束ね、`ArcoApp()` の入口を持つ | 全モジュール |
+| `:iosEntry` | **iOS の入口。** Swift Export のルート。`ArcoAppHost` と `initArco()` だけを公開する | `:shared` |
 | `:core:model` | `Spot` / `Session` / `Bearing` などのドメインモデル | なし |
 | `:core:common` | `Result`、ディスパッチャ、共通拡張 | `:core:model` |
 | `:core:domain` | UseCase（抽選・距離計算・到着判定・方位ソースの選択） | `:core:model` `:core:common` `:core:data` |
@@ -42,6 +45,7 @@
 ```
          :androidApp                    iosApp (Swift)
               │                              │
+              │                          :iosEntry       ← Swift Export のルート
               └───────────────┬──────────────┘
                               ▼
                           :shared                        ← umbrella
@@ -87,39 +91,65 @@ Google 公式のアーキテクチャガイドと Now in Android がこの形（
 
 ---
 
-## iOS の umbrella framework
+## iOS へは Swift Export で渡す
 
-**マルチモジュール化で最初に踏む地雷**（[../AGENTS.md](../AGENTS.md#踏みやすい地雷)）。
-
-Swift 側から見える framework は `:shared` が吐く1つだけ。他のモジュールの型は、**明示的に `export` しない限り
-Swift からは存在しないのと同じ**になる。
+Swift 側から見えるのは **`:iosEntry` の public API だけ**。`:shared` は framework を吐かない。
 
 ```kotlin
-// shared/build.gradle.kts
+// iosEntry/build.gradle.kts
 kotlin {
-    listOf(iosArm64(), iosSimulatorArm64()).forEach { iosTarget ->
-        iosTarget.binaries.framework {
-            baseName = "Shared"
-            isStatic = true
-            export(project(":core:model"))     // ← Swift から見せたいモジュールを列挙する
-        }
+    iosArm64()
+    iosSimulatorArm64()
+
+    @OptIn(ExperimentalSwiftExportDsl::class)
+    swiftExport {
+        moduleName.set("Shared")
+        flattenPackage.set("com.app.arco.ios")   // このパッケージだけ修飾なしで Swift に出る
     }
+
     sourceSets {
-        commonMain.dependencies {
-            api(project(":core:model"))        // ← export するものは implementation ではなく api
-            implementation(project(":core:domain"))
+        iosMain.dependencies {
+            implementation(project(":shared"))    // api にしない
         }
     }
 }
 ```
 
-2点セットで初めて効く。**片方だけだとビルドは通るのに Swift から型が見えない**、という分かりにくい失敗をする。
+### `:shared` を直接ルートにしない理由
 
-- `export()` の対象は `api` で依存すること。`implementation` のままだと Gradle が弾く
-- **export は最小限にする。** 原則 `:core:model` と `:shared` の入口だけ。
-  UseCase や Repository を export すると、Swift 側からドメインを直接叩く道ができてしまう
-- Swift が持つのはタブバーの器だけ、という方針（[architecture.md](architecture.md#ios-側の位置づけ)）を
-  export の範囲でも守る
+Swift Export は橋渡しする関数型から `@Composable` を落とす。`:shared` をルートにすると
+`ArcoApp()` が「引数なしの普通の関数」として Swift の公開 API に出てしまい、Swift から
+呼べてしまう。`:iosEntry` を1枚挟み、`ArcoAppHost` の内側に Composable を閉じ込める。
+
+### 境界に置ける型
+
+`implementation` で抱えた `:shared` の型は Swift から見えない。**モジュールを増やしても
+`export()` に相当する操作は無く、見せたいものは `:iosEntry` に薄いラッパを足して露出させる。**
+
+橋渡しが確認できている型:
+
+| 種類 | Swift 側 |
+|---|--|
+| `String` / 数値 / `Boolean` | そのまま |
+| `List<String>` | `[Swift.String]` |
+| `StateFlow<String>` | `any KotlinTypedStateFlow<Swift.String>`（`asAsyncSequence()` で購読できる） |
+| `UIViewController` | `UIKit.UIViewController` |
+
+`flattenPackage` の下に置いた **top-level 関数はグローバル関数として出る**（`initArco()` で確認済み）。
+
+Swift Export は Alpha なので、**橋渡しできるかどうかは生成物を読んで確かめる**。
+`iosEntry/build/SwiftExport/<target>/<config>/files/Shared/Shared.swift` に実際の署名が出る。
+
+### Xcode 側の設定
+
+ビルドフェーズは `./gradlew :iosEntry:embedSwiftExportForXcode` を叩く。ターゲットの Build Settings に
+以下が要る（**`-ObjC` を落とすと起動時に落ちる**。→ [../AGENTS.md](../AGENTS.md#踏みやすい地雷)）。
+
+```
+LIBRARY_SEARCH_PATHS = ("$(inherited)", "$(BUILT_PRODUCTS_DIR)")
+OTHER_LDFLAGS        = ("$(inherited)", "-ObjC", "-lShared")
+SWIFT_INCLUDE_PATHS  = ("$(inherited)", "$(BUILT_PRODUCTS_DIR)/**")
+```
 
 ---
 
@@ -150,10 +180,10 @@ compose.resources {
 4. `android { namespace = "com.app.arco.core.foo" }` を設定する。**namespace の重複はビルドエラーになる**
 5. パッケージを `com.app.arco.core.foo` で切る（→ [conventions.md](conventions.md)）
 6. 依存を足す側の `build.gradle.kts` に `implementation(project(":core:foo"))` を書く
-7. **Swift から見せる必要があるか判断する。** 必要なら `:shared` の `export()` と `api` を両方直す
+7. **Swift から見せる必要があるか判断する。** 必要なら `:iosEntry` にラッパを足す（`export()` は無い）
 8. このファイルの表と依存グラフを更新する
 
-Gradle Sync が通っただけでは iOS 側は検証できない。**framework を吐くところまで通す。**
+Gradle Sync が通っただけでは iOS 側は検証できない。**Xcode でビルドが通るところまで見る。**
 
 ---
 

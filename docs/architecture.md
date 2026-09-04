@@ -1,9 +1,10 @@
 # アーキテクチャ
 
-> **ステータス: 決定済み・未着手**
-> 現在のコードは KMP ウィザードのテンプレートのまま（`Greeting` / `Platform` / `App.kt`）で、
-> ここに書かれた層はまだ1つも存在しない。**以下は実装に着手する際に従う設計であり、現在のコードの説明ではない。**
-> 現状を知りたいときは `settings.gradle.kts` と `shared/src/` を読む。
+> **ステータス: 決定済み・一部着手**
+> ナビゲーション（Navigation 3）・ボトムタブ・`ArcoTheme`・DI（Koin）までは実装済み。
+> **ViewModel・UseCase・Repository・DataSource はまだ1つも存在しない。**
+> 以下は実装に着手する際に従う設計であり、現在のコードの説明ではない。
+> 現状を知りたいときは `shared/src/` を読む。
 
 Android 公式のアプリアーキテクチャガイドに則った MVVM。UI 層・Domain 層・Data 層の3層で、
 Now in Android と同じ形を KMP に移す。モジュールの切り方は [modules.md](modules.md)、命名は [conventions.md](conventions.md)。
@@ -83,19 +84,24 @@ data class ExploreUiState(
 
 **この節がこの文書でいちばん重要。** ここを外すと Arco では体験が壊れる。
 
-### 前提：タブを切り替えると Compose の root が独立する
+### 前提：探索セッションはアプリと同じ寿命を持つ
 
-ボトムタブは OS 別で、iOS 側は SwiftUI の `TabView` が器になる（[platform-branching.md](platform-branching.md)）。
-このため **タブごとに Compose の root が別々に立つ**。結果として:
+Compose の root はアプリに1つだけで、タブを切り替えても作り直さない
+（[../AGENTS.md](../AGENTS.md#ui-の共有範囲)）。それでも**探索セッションを ViewModel に持たせてはいけない**。
+理由は2つある。
 
-```
-タブごとに Compose root が独立する
-  → その配下の ViewModel のスコープもタブごとに独立する
-  → 「探索セッション」を ViewModel に持たせると、タブを離れた時点で消える
-```
+1. **センサーを止められない。** ポケットに入れて歩く前提なので、画面が composition から外れても
+   位置と歩数の蓄積は続く必要がある。ViewModel の寿命はこれに足りない
+2. **プロセス死をまたぐ。** 歩いている最中にアプリが落とされても、距離と進捗は続いていなければならない。
+   `SavedStateHandle` に載せて復元できる量と種類ではない
 
-探索中に履歴タブを覗いて戻ったら目的地が消えていた、という壊れ方をする。
-これは設計の好みではなく、この構成では避けられない事実として扱う。
+探索中に別のタブを覗いて戻ったら目的地が消えていた、という壊れ方を許さない。
+これは設計の好みではなく、体験の要件から出てくる制約として扱う。
+
+> **未確定:** Navigation 3 の `NavEntry` に ViewModel をスコープしたとき、`moveToTop` でタブを
+> 離れると破棄されるのかどうかは**まだ確かめていない**（ViewModel を1つも書いていないため）。
+> 上の2つの理由だけで探索セッションの置き場所は変わらないが、**画面固有の状態をどこまで
+> ViewModel に置けるか**は実測してから決める。
 
 ### 決着のさせ方
 
@@ -179,16 +185,24 @@ DataSource は両方の値をそのまま流し、判断は上でやる。DataSo
 
 ## DI（Koin）
 
-> **未導入。** `gradle/libs.versions.toml` に Koin はまだ入っていない。以下は導入時の方針。
+> **導入済み。** `com.app.arco.di` に `appModule` と `initKoin()` がある。
+> ただし登録してあるのは `AppNavigator` と `AppTabBridge` の2つだけで、
+> Repository・UseCase・ViewModel に関する記述はまだ実物が無い。
 
 Hilt は KMP に対応していないため、公式サンプルの構成をそのまま持ってこられない。Koin を使う。
 
-- **モジュールごとに Koin module を定義し、`:shared` で束ねる。** 依存の定義をそのモジュールの中に閉じる
-- ViewModel は `koinViewModel()` で取る
-- iOS 側の初期化エントリ（`initKoin()`）は `:shared` に置き、`iOSApp.swift` から呼ぶ
+- **`initKoin()` は Compose の外から呼ぶ。** Android は `ArcoApplication.onCreate`、iOS は
+  `iOSApp.swift` の `init()`。`KoinApplication {}` composable は Koin の寿命を composition に
+  縛るため使わない。Compose 側は `koinInject()` の既定値がグローバルの Koin を指すので、包まなくても解決される
+- **iOS の初期化は `:iosEntry` の `initArco()` を経由する。** `:shared` は `implementation` で
+  抱えているため Swift からは見えない（→ [modules.md](modules.md#境界に置ける型)）
+- **モジュールごとに Koin module を定義し、`:shared` で束ねる。** 依存の定義をそのモジュールの中に閉じる。
+  いまはモジュールが1つなので Koin module も `appModule` 1つだけ
+- ViewModel は `koinViewModel()` で取る（`koin-compose-viewmodel` は最初の ViewModel を書くときに足す）
 - **セッションを持つ Repository は `single` で登録する。** ここを `factory` にすると、
   ViewModel ごとに別インスタンスが生まれてこの文書の前提が崩れる
 - `Dispatchers.IO` を直接書かず、ディスパッチャも注入する（→ [conventions.md](conventions.md)）
 
 Koin は実行時解決なので、**依存の登録漏れはコンパイルでは捕まらず起動時に落ちる**。
-新しい依存を足したら、必ず一度アプリを起動して確認する。
+`shared/src/commonTest/kotlin/com/app/arco/di/AppModuleTest.kt` が全定義を1度解決しているので、
+**依存を足したらこのテストにも足す。**

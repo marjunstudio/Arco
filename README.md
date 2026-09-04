@@ -17,7 +17,7 @@ Kotlin Multiplatform + Compose Multiplatform（Android / iOS）。
 |---|--|
 | [AGENTS.md](AGENTS.md) | **使用技術・設計方針・実装の決めごと・禁止事項。実装に入る前にここを読む** |
 | [docs/architecture.md](docs/architecture.md) | MVVM の層と依存方向、UiState の形、状態をどこに置くか |
-| [docs/modules.md](docs/modules.md) | モジュール構成と依存グラフ、iOS framework への `export` の作法 |
+| [docs/modules.md](docs/modules.md) | モジュール構成と依存グラフ、iOS への Swift Export の作法 |
 | [docs/conventions.md](docs/conventions.md) | パッケージ・命名・Composable の書き方・ドメイン用語 |
 | [docs/platform-branching.md](docs/platform-branching.md) | iOS 26/18・API 31 の分岐実装 |
 | `gradle/libs.versions.toml` | 依存バージョンの唯一の真実。ドキュメントに数字は書かない |
@@ -71,7 +71,7 @@ Android Studio でルートを開き、Gradle Sync を通して `androidApp` を
    Gradle Sync 後に `iosApp` 実行構成が現れる。シミュレータを選んで Run。
    Xcode から建てるなら `iosApp/iosApp.xcodeproj` を開く。
 
-Kotlin を変更したら framework は自動で再生成される。
+Kotlin を変更したら iOS 側のバイナリは自動で再生成される。
 
 ### iOS 18 のシミュレータランタイム
 
@@ -90,8 +90,9 @@ xcodebuild -downloadPlatform iOS -buildVersion 18.5   # 不足分を取得
 |---|--|
 | `shared/` | 画面・ドメイン・センサー抽象（`commonMain` / `androidMain` / `iosMain`） |
 | `androidApp/` | Android の入口 |
+| `iosEntry/` | iOS へ渡す Kotlin の入口。Swift Export のルート |
 | `iosApp/` | iOS の入口。Swift はタブバー周辺のみ |
 
 マルチモジュール構成（core をレイヤで切り、feature は本流を1つに）は決定済みだが、
-**分割はまだ実施していない**。現在のモジュールは `:shared` と `:androidApp` の2つだけ。
+**分割はまだ実施していない**。現在のモジュールは `:shared` `:androidApp` `:iosEntry` の3つだけ。
 決めた構成は [docs/modules.md](docs/modules.md)。

@@ -25,9 +25,9 @@ GPS・方位・歩数・触覚が体験の中心にあるため、**エミュレ
 
 - Kotlin Multiplatform / Compose Multiplatform
 - Material 3 Expressive（Android のボトムタブ）
-- SwiftUI（iOS のボトムタブのみ）
+- UIKit の `UITabBar`（iOS のボトムタブのみ）— Liquid Glass を得るためにネイティブである必要がある
 - 主役の UI（距離ダイヤル・レーダー・到着カード）は Canvas による自作描画
-- Koin（DI）— Hilt が KMP に対応していないため。**まだ導入していない**（`gradle/libs.versions.toml` に無い）
+- Koin（DI）— Hilt が KMP に対応していないため
 
 **バージョン番号はドキュメントに書かない。`gradle/libs.versions.toml` を読む。**
 二重管理になって必ず片方が腐る。
@@ -60,8 +60,9 @@ Domain 層は公式ガイドでは optional だが、**このアプリでは省�
 
 ### 状態は Composable の外に置く
 
-タブごとに Compose の root が独立するため、**`remember` に持たせても ViewModel に持たせても、
-タブを離れた時点で消える**。探索中の距離や進捗が失われると致命的。
+**探索セッションはアプリと同じ寿命を持つ。** ポケットに入れて歩く前提なので、画面が composition から
+外れても位置と歩数の蓄積は止められない。加えてプロセスが死んでも距離と進捗は続いていなければならない。
+`remember` にも ViewModel にも、この寿命は無い。
 
 探索セッションの所有者は **data 層のシングルトン `SessionRepository`**。ViewModel はそれを購読して
 UiState に変換するだけで、状態の所有者にはならない。Composable は描画のみ。
@@ -72,14 +73,23 @@ UiState に変換するだけで、状態の所有者にはならない。Compos
 ### UI の共有範囲
 
 - **画面の中身は Compose Multiplatform で共通化する**
-- **ボトムタブだけが OS 別** — Android は Material 3 Expressive、iOS は SwiftUI
+- **ボトムタブだけが OS 別** — Android は Material 3 Expressive、iOS は UIKit の `UITabBar`
 - Swift を書くのは iOS のタブバー周辺のみ。それ以外は Kotlin で完結させる
 
+**Compose の root はアプリに1つだけ。** iOS ではその root を全面に敷き、`UITabBar` を上に重ねる。
+バーはネイティブでないと iOS 26 の Liquid Glass がかからないが、`UITabBarController` は要らない
+（素の `UITabBar` でもかかる）。
+
 ```
-commonMain   expect fun AppBottomBar(...)
-androidMain  actual → ExpressiveBottomBar（純粋な Compose）
-iosMain      actual → IosBottomBar（Swift 側の AppTabBar を呼ぶ）
+commonMain   expect fun AppTabScaffold(selectedTab, onSelectTab, content)
+androidMain  actual → Scaffold + ShortNavigationBar（純粋な Compose）
+iosMain      actual → content() だけ。バーは Swift の RootViewController が上に重ねる
 ```
+
+バックスタックとネイティブのバーをつなぐのは `AppTabBridge`。**境界を越えるのはタブの id
+（`String`）と `StateFlow<String>` だけ**で、ラベルとアイコンは各 OS が自前で持つ。
+バーがコンテンツを隠す高さは Swift が `additionalSafeAreaInsets` に入れるので、
+Compose 側は通常の safe area として受け取る。
 
 **`expect` / `actual` の名前にデザイン言語固有の語（`Glass` `Expressive` `LiquidGlass`）を入れない。**
 中で分岐する以上、片方の名前を付けると実体とズレる。その名前が出ていいのは分岐の内側の型だけ。
@@ -118,18 +128,19 @@ iosMain      actual → IosBottomBar（Swift 側の AppTabBar を呼ぶ）
 
 - **`UIDesignRequiresCompatibility` を Info.plist に入れない** — `YES` で置くと iOS 26 でも旧デザインで描画され、アプリ全体で Liquid Glass が丸ごと消える。「iOS 26 なのに glass が出ない」を踏んだら最初にここを見る
 - **タブバー周辺の余白を数値でハードコードしない** — iOS 26 と 18 でタブバーの高さも透過の有無も違う。safe area insets から取る
-- **`#available` を各画面に散らさない** — 分岐は `AppTabBar` の入口1箇所に集める。散ると iOS 18 側の見た目を誰も把握できなくなる
+- **`#available` を各画面に散らさない** — 分岐は `RootViewController` の1箇所に集める。散ると iOS 18 側の見た目を誰も把握できなくなる
 - **`androidTarget {}` を使わない** — Kotlin 2.3 以降で非推奨。AGP 9 系の `android {}` を使う（既に移行済み）
 - **依存ライブラリを勝手に追加しない** — 追加は相談してから
 - **依存ライブラリのバージョン番号をドキュメントに書かない** — `gradle/libs.versions.toml` が唯一の真実。JDK・Android Studio・Xcode などの前提環境は README に書いてよい。「いつ削除・非推奨になったか」の記録（`iosX64` は Compose Multiplatform 1.11 で削除、など）は過去の事実で腐らないので書いてよい
 
 ## 踏みやすい地雷
 
-1. **iOS 向け framework の `export()` 忘れ** — マルチモジュール化した際、`binaries.framework { export(project(...)) }` を書き、依存を `implementation` ではなく `api` にしないと Swift 側から型が見えない（→ [docs/modules.md](docs/modules.md)）
-2. **edge-to-edge** — targetSdk 36 では強制される。加えて iOS 26 のタブバーは半透明で浮くためコンテンツが下に潜る。**safe area insets の対応は最初に片付ける**。後回しにすると全画面で修正することになる
-3. **バックグラウンド位置情報** — ポケットに入れて歩く前提なので必須。iOS は常時許可と Background Modes、Android は `ACCESS_BACKGROUND_LOCATION` が要る。審査でも説明を求められるので早めに通す
-4. **コンパスの磁気ノイズ** — 都市部では方位が大きくブレる。歩行中は GPS の進行方位、停止中は磁気コンパスに切り替える必要が出る見込み
-5. **Xcode と Android Studio でビルド主体が違う** — Android Studio から実行すると `OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED=YES` が立ち、framework は Gradle ではなく IDE 側がビルドする。「片方では通るのにもう片方で通らない」を踏んだらここを疑う。片方で Clean してももう一方には効かない
+1. **Swift Export した静的ライブラリを `-ObjC` なしでリンクする** — 生成される `KotlinRuntimeSupport` は `NSObject` の ObjC カテゴリを含む。リンカは静的ライブラリからカテゴリだけのオブジェクトファイルを捨てるため、`OTHER_LDFLAGS` に `-ObjC` が無いと**ビルドは通るのに起動直後に `unrecognized selector _Kotlin_SwiftExport_wrapIntoExistential:` で落ちる**。症状がランタイムにしか出ないので原因に辿り着きにくい
+2. **Swift へ出す型を欲張る** — Swift から見えるのは `:iosEntry` の public API だけ。`implementation` で抱えたモジュールの型をそのまま返すと橋渡しできない。境界に置くのは primitive と `StateFlow` に留める（→ [docs/modules.md](docs/modules.md)）
+3. **edge-to-edge** — targetSdk 36 では強制される。加えて iOS 26 のタブバーは半透明で浮くためコンテンツが下に潜る。**safe area insets の対応は最初に片付ける**。後回しにすると全画面で修正することになる
+4. **バックグラウンド位置情報** — ポケットに入れて歩く前提なので必須。iOS は常時許可と Background Modes、Android は `ACCESS_BACKGROUND_LOCATION` が要る。審査でも説明を求められるので早めに通す
+5. **コンパスの磁気ノイズ** — 都市部では方位が大きくブレる。歩行中は GPS の進行方位、停止中は磁気コンパスに切り替える必要が出る見込み
+6. **Xcode と Android Studio でビルド主体が違う** — Android Studio から実行すると `OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED=YES` が立ち、iOS のバイナリは Gradle ではなく IDE 側がビルドする。「片方では通るのにもう片方で通らない」を踏んだらここを疑う。片方で Clean してももう一方には効かない
 
 ## 動作確認
 

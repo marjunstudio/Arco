@@ -32,27 +32,38 @@ extension View {
 
 ### 構造が変わるものは View を分ける
 
-`.tabViewBottomAccessory` や `.tabBarMinimizeBehavior` のように構造が変わるものは modifier では吸収できない。
-View を分けて入口で選び、iOS 26 専用 API を使う型には `@available(iOS 26.0, *)` を付ける。
+構造が変わるものは modifier では吸収できない。View を分けて入口で選び、iOS 26 専用 API を使う型には
+`@available(iOS 26.0, *)` を付ける。**分岐は `RootViewController` の1箇所に集める。**
+各画面に `#available` が散ると、iOS 18 側の見た目を誰も把握できなくなる。
 
-```swift
-struct AppTabBar: View {
-    var body: some View {
-        if #available(iOS 26.0, *) {
-            GlassTabBar()   // @available(iOS 26.0, *) を付けた型
-        } else {
-            PlainTabBar()   // 素の TabView
-        }
-    }
-}
-```
+### タブバーには分岐が要らない
 
-**分岐はこの入口1箇所に集める。** 各画面に `#available` が散ると、iOS 18 側の見た目を誰も把握できなくなる。
+`RootViewController` が Compose の上に重ねているのは素の `UITabBar`。**Liquid Glass は OS がかけるので、
+`#available` は1つも要らない。** `UITabBarController` も要らない。
+
+そのため**いま `iosApp/` に `#available` は1つも無い**。最初に必要になるのは、自前の View に
+`.glassEffect` を使い始めたときで、そのときは上の ViewModifier の形に閉じ込める。
+
+### スクロール連動の挙動は使えない
+
+`.tabBarMinimizeBehavior(.onScrollDown)` やスクロールエッジエフェクトは、**構造をどう組んでも効かない**。
+Compose は `UIScrollView` を作らずに自前でスクロールを描くため、UIKit 側からはスクロールが観測できない。
+「重ね方を変えれば効くのでは」と試す前にここを読むこと。
 
 ### 余白
 
 iOS 26 と 18 ではタブバーの高さも透過の有無も違う。**余白を数値でハードコードすると必ず片方でズレる**ので
-safe area insets から取る。
+実測する。`RootViewController.viewDidLayoutSubviews()` でバーが隠している高さを測り、Compose の
+view controller の `additionalSafeAreaInsets.bottom` に入れる。Compose 側はそれを通常の safe area
+として受け取るので、画面ごとの対応は要らない。
+
+```swift
+let hiddenHeight = max(0, view.bounds.maxY - tabBar.frame.minY - view.safeAreaInsets.bottom)
+composeViewController.additionalSafeAreaInsets.bottom = hiddenHeight
+```
+
+`view.safeAreaInsets.bottom` を引くのは、Compose 側が safe area を別に持っているため。
+引かないとホームインジケータの分を二重に確保する。
 
 ## Android
 
