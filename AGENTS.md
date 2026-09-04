@@ -121,7 +121,7 @@ iosMain      actual → IosBottomBar（Swift 側の AppTabBar を呼ぶ）
 - **`#available` を各画面に散らさない** — 分岐は `AppTabBar` の入口1箇所に集める。散ると iOS 18 側の見た目を誰も把握できなくなる
 - **`androidTarget {}` を使わない** — Kotlin 2.3 以降で非推奨。AGP 9 系の `android {}` を使う（既に移行済み）
 - **依存ライブラリを勝手に追加しない** — 追加は相談してから
-- **依存ライブラリのバージョン番号をドキュメントに書かない** — `gradle/libs.versions.toml` が唯一の真実。JDK・Android Studio・Xcode などの前提環境は README に書いてよい
+- **依存ライブラリのバージョン番号をドキュメントに書かない** — `gradle/libs.versions.toml` が唯一の真実。JDK・Android Studio・Xcode などの前提環境は README に書いてよい。「いつ削除・非推奨になったか」の記録（`iosX64` は Compose Multiplatform 1.11 で削除、など）は過去の事実で腐らないので書いてよい
 
 ## 踏みやすい地雷
 

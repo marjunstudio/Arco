@@ -65,6 +65,9 @@
                         :core:model
 ```
 
+上は主要な依存のみを描いた簡略図。feature は `:core:model` と
+`:core:designsystem` にも直接依存する。**正確な依存先は上の表**を見る。
+
 ### 依存のルール
 
 - **`:core:model` は何にも依存しない。** 依存を足したくなったら、それは model ではない
