@@ -13,8 +13,11 @@ androidx-lifecycle = "2.11.0-beta01"
 androidx-navigation3 = "1.1.1"
 androidx-testExt = "1.3.0"
 composeMultiplatform = "1.11.1"
+detekt = "2.0.0-alpha.6"
 junit = "4.13.2"
 kotlin = "2.4.10"
+ktlint = "1.8.0"
+ktlintGradle = "14.2.0"
 material3 = "1.11.0-alpha07"
 
 [libraries]
@@ -47,3 +50,5 @@ composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "k
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 # NavKey の保存・復元に kotlinx.serialization の polymorphic serializer を使うため
 kotlinxSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+detekt = { id = "dev.detekt", version.ref = "detekt" }
+ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlintGradle" }

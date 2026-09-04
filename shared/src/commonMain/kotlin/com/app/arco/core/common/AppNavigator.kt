@@ -12,7 +12,9 @@ import kotlinx.coroutines.flow.receiveAsFlow
  * （iOS のネイティブシェルなど）からも遷移を起こせる。
  */
 sealed interface NavCommand {
-    data class Push(val key: NavKey) : NavCommand
+    data class Push(
+        val key: NavKey,
+    ) : NavCommand
 
     data object Pop : NavCommand
 
@@ -20,7 +22,9 @@ sealed interface NavCommand {
      * すでにバックスタックにあるキーを末尾へ持ち上げる。無ければ積む。
      * ルートのタブ切り替えはこれで表す。
      */
-    data class MoveToTop(val key: NavKey) : NavCommand
+    data class MoveToTop(
+        val key: NavKey,
+    ) : NavCommand
 }
 
 /**

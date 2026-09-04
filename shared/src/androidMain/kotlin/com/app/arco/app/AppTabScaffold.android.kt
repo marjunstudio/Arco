@@ -45,7 +45,8 @@ actual fun AppTabScaffold(
 }
 
 private val AppTab.icon: ImageVector
-    get() = when (this) {
-        AppTab.Explore -> ArcoIcons.Navigation
-        AppTab.History -> ArcoIcons.History
-    }
+    get() =
+        when (this) {
+            AppTab.Explore -> ArcoIcons.Navigation
+            AppTab.History -> ArcoIcons.History
+        }

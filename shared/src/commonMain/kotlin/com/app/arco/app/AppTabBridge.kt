@@ -14,7 +14,9 @@ import kotlinx.coroutines.flow.asStateFlow
  * 境界を越える型を String に絞ってあるのは、Swift Export がまだ Alpha だから。ラベルとアイコンは
  * 各 OS が自前で持つので、渡すのは「どのタブか」だけで足りる。
  */
-class AppTabBridge internal constructor(private val navigator: AppNavigator) {
+class AppTabBridge internal constructor(
+    private val navigator: AppNavigator,
+) {
     private val mutableSelectedTabId = MutableStateFlow(AppTab.Explore.id)
 
     /** 表示順に並んだタブの id。 */

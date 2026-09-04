@@ -19,10 +19,14 @@ fun NavigatorEffect(
     LaunchedEffect(navigator, backStack) {
         navigator.commands.collect { command ->
             when (command) {
-                is NavCommand.Push -> backStack.add(command.key)
+                is NavCommand.Push -> {
+                    backStack.add(command.key)
+                }
 
                 // 最後の1枚は残す。空にすると NavDisplay が描くものを失う
-                NavCommand.Pop -> if (backStack.size > 1) backStack.removeAt(backStack.lastIndex)
+                NavCommand.Pop -> {
+                    if (backStack.size > 1) backStack.removeAt(backStack.lastIndex)
+                }
 
                 is NavCommand.MoveToTop -> {
                     backStack.remove(command.key)

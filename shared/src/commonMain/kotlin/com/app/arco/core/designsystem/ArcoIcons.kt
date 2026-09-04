@@ -38,19 +38,29 @@ object ArcoIcons {
 
 private const val ICON_VIEWPORT = 24f
 
-private fun icon(name: String, pathBuilder: PathBuilder.() -> Unit): ImageVector =
-    ImageVector.Builder(
-        name = name,
-        defaultWidth = ICON_VIEWPORT.dp,
-        defaultHeight = ICON_VIEWPORT.dp,
-        viewportWidth = ICON_VIEWPORT,
-        viewportHeight = ICON_VIEWPORT,
-    ).path(fill = SolidColor(Color.Black), pathBuilder = pathBuilder).build()
+// 履歴アイコンの横棒。viewport 24 の中での左端・右端・太さ
+private const val BAR_START = 4f
+private const val BAR_END = 20f
+private const val BAR_THICKNESS = 2f
+
+private fun icon(
+    name: String,
+    pathBuilder: PathBuilder.() -> Unit,
+): ImageVector =
+    ImageVector
+        .Builder(
+            name = name,
+            defaultWidth = ICON_VIEWPORT.dp,
+            defaultHeight = ICON_VIEWPORT.dp,
+            viewportWidth = ICON_VIEWPORT,
+            viewportHeight = ICON_VIEWPORT,
+        ).path(fill = SolidColor(Color.Black), pathBuilder = pathBuilder)
+        .build()
 
 private fun PathBuilder.bar(top: Float) {
-    moveTo(4f, top)
-    lineTo(20f, top)
-    lineTo(20f, top + 2f)
-    lineTo(4f, top + 2f)
+    moveTo(BAR_START, top)
+    lineTo(BAR_END, top)
+    lineTo(BAR_END, top + BAR_THICKNESS)
+    lineTo(BAR_START, top + BAR_THICKNESS)
     close()
 }

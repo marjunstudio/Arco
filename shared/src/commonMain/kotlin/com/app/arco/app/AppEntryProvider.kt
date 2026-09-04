@@ -11,7 +11,8 @@ import com.app.arco.feature.history.HistoryRoute
 /**
  * NavKey と画面の対応表。画面を足すときに触るのはここだけ。
  */
-internal fun appEntryProvider(): (NavKey) -> NavEntry<NavKey> = entryProvider {
-    entry<ExploreNavKey> { ExploreRoute() }
-    entry<HistoryNavKey> { HistoryRoute() }
-}
+internal fun appEntryProvider(): (NavKey) -> NavEntry<NavKey> =
+    entryProvider {
+        entry<ExploreNavKey> { ExploreRoute() }
+        entry<HistoryNavKey> { HistoryRoute() }
+    }

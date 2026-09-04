@@ -21,15 +21,17 @@ import kotlinx.serialization.modules.subclass
  */
 @Composable
 internal fun rememberArcoBackStack(): NavBackStack<NavKey> {
-    val configuration = remember {
-        SavedStateConfiguration { serializersModule = navKeySerializers }
-    }
+    val configuration =
+        remember {
+            SavedStateConfiguration { serializersModule = navKeySerializers }
+        }
     return rememberNavBackStack(configuration = configuration, ExploreNavKey)
 }
 
-private val navKeySerializers = SerializersModule {
-    polymorphic(NavKey::class) {
-        subclass(ExploreNavKey::class, ExploreNavKey.serializer())
-        subclass(HistoryNavKey::class, HistoryNavKey.serializer())
+private val navKeySerializers =
+    SerializersModule {
+        polymorphic(NavKey::class) {
+            subclass(ExploreNavKey::class, ExploreNavKey.serializer())
+            subclass(HistoryNavKey::class, HistoryNavKey.serializer())
+        }
     }
-}

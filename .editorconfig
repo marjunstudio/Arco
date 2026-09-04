@@ -1,0 +1,31 @@
+# ktlint と IntelliJ の両方がこのファイルを読む。フォーマットの設定はここが原本。
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.{kt,kts}]
+# Kotlin coding conventions の推奨値。detekt の MaxLineLength 既定とも揃えている
+max_line_length = 120
+ij_kotlin_allow_trailing_comma = true
+ij_kotlin_allow_trailing_comma_on_call_site = true
+# @Composable は大文字始まりが公式の命名規則。既定の除外リストは 'unset' で Composable を含まない
+ktlint_function_naming_ignore_when_annotated_with = Composable
+
+[*.{yml,yaml,json,xml}]
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
+
+[gradle/libs.versions.toml]
+indent_size = 2
+
+[*.kts]
+# version catalog のアクセサ（libs.versions.x.get().toInt()）が3行に割れて読みにくくなるため
+ktlint_standard_chain-method-continuation = disabled
