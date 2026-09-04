@@ -47,22 +47,22 @@
                           :shared                        ← umbrella
                               │
         ┌─────────────────────┼─────────────────────┐
-        ▼                     ▼                     │
-:feature:explore      :feature:history              │
-        │                     │                     │
-        ├─────────────────────┤                     │
         ▼                     ▼                     ▼
-   :core:domain ───────────────────────────> :core:designsystem
-        │
-        ▼
-   :core:data ──────────> :core:sensor
-        │                      │
-        └──────────┬───────────┘
+:feature:explore      :feature:history      :core:designsystem
+        │                     │
+        └──────────┬──────────┘
                    ▼
-             :core:common
+             :core:domain
                    │
                    ▼
-             :core:model
+             :core:data ──────────> :core:sensor
+                   │                      │
+                   ▼                      │
+             :core:common                 │
+                   │                      │
+                   └──────────┬───────────┘
+                              ▼
+                        :core:model
 ```
 
 ### 依存のルール

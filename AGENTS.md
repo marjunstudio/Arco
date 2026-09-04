@@ -121,7 +121,7 @@ iosMain      actual → IosBottomBar（Swift 側の AppTabBar を呼ぶ）
 - **`#available` を各画面に散らさない** — 分岐は `AppTabBar` の入口1箇所に集める。散ると iOS 18 側の見た目を誰も把握できなくなる
 - **`androidTarget {}` を使わない** — Kotlin 2.3 以降で非推奨。AGP 9 系の `android {}` を使う（既に移行済み）
 - **依存ライブラリを勝手に追加しない** — 追加は相談してから
-- **バージョン番号をドキュメントに書かない**
+- **依存ライブラリのバージョン番号をドキュメントに書かない** — `gradle/libs.versions.toml` が唯一の真実。JDK・Android Studio・Xcode などの前提環境は README に書いてよい
 
 ## 踏みやすい地雷
 
@@ -146,4 +146,4 @@ iosMain      actual → IosBottomBar（Swift 側の AppTabBar を呼ぶ）
 - [ ] 目的地に到達すると正体が開示される
 - [ ] iOS 26 でタブバーに Liquid Glass がかかる
 - [ ] iOS 18 でもタブバーが崩れず、コンテンツが下に潜らない
-- [ ] Android 11 以下でも振動が返る（`VibratorManager` の分岐が効いている）
+- [ ] Android 11 以下でも振動が返る（API 31 未満は `Vibrator` にフォールバックしている）
