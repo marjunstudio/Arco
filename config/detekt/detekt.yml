@@ -1,0 +1,8 @@
+# buildUponDefaultConfig = true なので、既定 config からの差分だけを書く。
+# 既定値の一覧は detekt-core/src/main/resources/default-detekt-config.yml を参照。
+# config.validation = true のため、綴りを間違えたルール名・プロパティ名はビルド時にエラーになる。
+
+naming:
+  FunctionNaming:
+    # @Composable な関数は大文字始まりが公式の命名規則
+    ignoreAnnotated: ['Composable']
