@@ -31,6 +31,8 @@ kotlin {
         iosMain.dependencies {
             implementation(project(":shared"))
             implementation(libs.compose.ui)
+            // ArcoAppHost が Compose の外で AppTabBridge を受け取るため
+            implementation(libs.koin.core)
         }
     }
 }

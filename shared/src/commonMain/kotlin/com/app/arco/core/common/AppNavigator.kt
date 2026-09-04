@@ -30,8 +30,7 @@ sealed interface NavCommand {
 /**
  * 遷移の指示を出す口。適用するのは [NavigatorEffect]。
  *
- * アプリ全体で1つ。今は各プラットフォームの入口が生成して持つが、DI を入れたら
- * そこで single として登録する。
+ * アプリ全体で1つ。Koin に `single` で登録してある（`com.app.arco.di.appModule`）。
  */
 class AppNavigator {
     private val commandChannel = Channel<NavCommand>(Channel.BUFFERED)

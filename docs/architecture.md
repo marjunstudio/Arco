@@ -1,7 +1,7 @@
 # アーキテクチャ
 
 > **ステータス: 決定済み・一部着手**
-> ナビゲーション（Navigation 3）・ボトムタブ・`ArcoTheme` までは実装済み。
+> ナビゲーション（Navigation 3）・ボトムタブ・`ArcoTheme`・DI（Koin）までは実装済み。
 > **ViewModel・UseCase・Repository・DataSource はまだ1つも存在しない。**
 > 以下は実装に着手する際に従う設計であり、現在のコードの説明ではない。
 > 現状を知りたいときは `shared/src/` を読む。
@@ -185,16 +185,24 @@ DataSource は両方の値をそのまま流し、判断は上でやる。DataSo
 
 ## DI（Koin）
 
-> **未導入。** `gradle/libs.versions.toml` に Koin はまだ入っていない。以下は導入時の方針。
+> **導入済み。** `com.app.arco.di` に `appModule` と `initKoin()` がある。
+> ただし登録してあるのは `AppNavigator` と `AppTabBridge` の2つだけで、
+> Repository・UseCase・ViewModel に関する記述はまだ実物が無い。
 
 Hilt は KMP に対応していないため、公式サンプルの構成をそのまま持ってこられない。Koin を使う。
 
-- **モジュールごとに Koin module を定義し、`:shared` で束ねる。** 依存の定義をそのモジュールの中に閉じる
-- ViewModel は `koinViewModel()` で取る
-- iOS 側の初期化エントリ（`initKoin()`）は `:shared` に置き、`iOSApp.swift` から呼ぶ
+- **`initKoin()` は Compose の外から呼ぶ。** Android は `ArcoApplication.onCreate`、iOS は
+  `iOSApp.swift` の `init()`。`KoinApplication {}` composable は Koin の寿命を composition に
+  縛るため使わない。Compose 側は `koinInject()` の既定値がグローバルの Koin を指すので、包まなくても解決される
+- **iOS の初期化は `:iosEntry` の `initArco()` を経由する。** `:shared` は `implementation` で
+  抱えているため Swift からは見えない（→ [modules.md](modules.md#境界に置ける型)）
+- **モジュールごとに Koin module を定義し、`:shared` で束ねる。** 依存の定義をそのモジュールの中に閉じる。
+  いまはモジュールが1つなので Koin module も `appModule` 1つだけ
+- ViewModel は `koinViewModel()` で取る（`koin-compose-viewmodel` は最初の ViewModel を書くときに足す）
 - **セッションを持つ Repository は `single` で登録する。** ここを `factory` にすると、
   ViewModel ごとに別インスタンスが生まれてこの文書の前提が崩れる
 - `Dispatchers.IO` を直接書かず、ディスパッチャも注入する（→ [conventions.md](conventions.md)）
 
 Koin は実行時解決なので、**依存の登録漏れはコンパイルでは捕まらず起動時に落ちる**。
-新しい依存を足したら、必ず一度アプリを起動して確認する。
+`shared/src/commonTest/kotlin/com/app/arco/di/AppModuleTest.kt` が全定義を1度解決しているので、
+**依存を足したらこのテストにも足す。**

@@ -15,6 +15,7 @@ androidx-testExt = "1.3.0"
 composeMultiplatform = "1.11.1"
 detekt = "2.0.0-alpha.6"
 junit = "4.13.2"
+koin = "4.2.2"
 kotlin = "2.4.10"
 ktlint = "1.8.0"
 ktlintGradle = "14.2.0"
@@ -41,6 +42,10 @@ compose-material3 = { module = "org.jetbrains.compose.material3:material3", vers
 compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "composeMultiplatform" }
 compose-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "composeMultiplatform" }
 compose-uiToolingPreview = { module = "org.jetbrains.compose.ui:ui-tooling-preview", version.ref = "composeMultiplatform" }
+# koin-compose-viewmodel / -navigation はまだ入れない。ViewModel が1つも無いのと、
+# koin-compose-viewmodel-navigation は推移依存で Navigation 2（navigation-compose）を引き込むため
+koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }
+koin-compose = { module = "io.insert-koin:koin-compose", version.ref = "koin" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

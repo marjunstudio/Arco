@@ -27,7 +27,7 @@ GPS・方位・歩数・触覚が体験の中心にあるため、**エミュレ
 - Material 3 Expressive（Android のボトムタブ）
 - UIKit の `UITabBar`（iOS のボトムタブのみ）— Liquid Glass を得るためにネイティブである必要がある
 - 主役の UI（距離ダイヤル・レーダー・到着カード）は Canvas による自作描画
-- Koin（DI）— Hilt が KMP に対応していないため。**まだ導入していない**（`gradle/libs.versions.toml` に無い）
+- Koin（DI）— Hilt が KMP に対応していないため
 
 **バージョン番号はドキュメントに書かない。`gradle/libs.versions.toml` を読む。**
 二重管理になって必ず片方が腐る。

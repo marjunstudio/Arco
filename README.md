@@ -94,5 +94,5 @@ xcodebuild -downloadPlatform iOS -buildVersion 18.5   # 不足分を取得
 | `iosApp/` | iOS の入口。Swift はタブバー周辺のみ |
 
 マルチモジュール構成（core をレイヤで切り、feature は本流を1つに）は決定済みだが、
-**分割はまだ実施していない**。現在のモジュールは `:shared` と `:androidApp` の2つだけ。
+**分割はまだ実施していない**。現在のモジュールは `:shared` `:androidApp` `:iosEntry` の3つだけ。
 決めた構成は [docs/modules.md](docs/modules.md)。

@@ -18,7 +18,7 @@
 | モジュール | 責務 | 依存 |
 |---|--|--|
 | `:shared` | **umbrella。** Koin を束ね、`ArcoApp()` の入口を持つ | 全モジュール |
-| `:iosEntry` | **iOS の入口。** Swift Export のルート。`ArcoAppHost` だけを公開する | `:shared` |
+| `:iosEntry` | **iOS の入口。** Swift Export のルート。`ArcoAppHost` と `initArco()` だけを公開する | `:shared` |
 | `:core:model` | `Spot` / `Session` / `Bearing` などのドメインモデル | なし |
 | `:core:common` | `Result`、ディスパッチャ、共通拡張 | `:core:model` |
 | `:core:domain` | UseCase（抽選・距離計算・到着判定・方位ソースの選択） | `:core:model` `:core:common` `:core:data` |
@@ -134,6 +134,8 @@ Swift Export は橋渡しする関数型から `@Composable` を落とす。`:sh
 | `List<String>` | `[Swift.String]` |
 | `StateFlow<String>` | `any KotlinTypedStateFlow<Swift.String>`（`asAsyncSequence()` で購読できる） |
 | `UIViewController` | `UIKit.UIViewController` |
+
+`flattenPackage` の下に置いた **top-level 関数はグローバル関数として出る**（`initArco()` で確認済み）。
 
 Swift Export は Alpha なので、**橋渡しできるかどうかは生成物を読んで確かめる**。
 `iosEntry/build/SwiftExport/<target>/<config>/files/Shared/Shared.swift` に実際の署名が出る。
