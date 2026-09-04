@@ -6,3 +6,25 @@ naming:
   FunctionNaming:
     # @Composable な関数は大文字始まりが公式の命名規則
     ignoreAnnotated: ['Composable']
+  MatchingDeclarationName:
+    # KMP の actual 実装は Platform.ios.kt に IOSPlatform を置くのが標準構成。
+    # 既定の multiplatformTargets はファイル名の .ios / .android を剥がすだけで、
+    # 剥がした後の名前と宣言名が違うケースまでは許容しない
+    excludes: ['**/*.android.kt', '**/*.ios.kt']
+
+style:
+  MagicNumber:
+    # 既定リストに androidHostTest / androidDeviceTest を足したもの。AGP 9 の KMP プラグインが
+    # 使うソースセット名に detekt 既定が追従していない。excludes は既定を上書きするため全件書く
+    excludes:
+      - '**/test/**'
+      - '**/androidTest/**'
+      - '**/commonTest/**'
+      - '**/jvmTest/**'
+      - '**/androidUnitTest/**'
+      - '**/androidInstrumentedTest/**'
+      - '**/androidHostTest/**'
+      - '**/androidDeviceTest/**'
+      - '**/jsTest/**'
+      - '**/iosTest/**'
+      - '**/*.kts'

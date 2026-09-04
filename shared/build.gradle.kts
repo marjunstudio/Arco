@@ -1,3 +1,4 @@
+import dev.detekt.gradle.Detekt
 import dev.detekt.gradle.extensions.FailOnSeverity
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
@@ -72,6 +73,18 @@ detekt {
     buildUponDefaultConfig = true
     parallel = true
     failOnSeverity = FailOnSeverity.Warning
+}
+
+// KMP には src/main/kotlin が無いため、既定の :shared:detekt は NO-SOURCE になる。
+// sourceSet ごとのタスクを check に繋いで commonMain / androidMain / iosMain を検査対象にする
+tasks.named("check") {
+    dependsOn(tasks.withType<Detekt>().matching { it.name.endsWith("SourceSet") })
+}
+
+tasks.withType<Detekt>().configureEach {
+    // Compose Resources の生成コードもソースセットに入るため除外する。
+    // パターンは各 srcDir からの相対パスに対して照合されるため、"**/build/**" では当たらない
+    exclude("**/generated/resources/**")
 }
 
 ktlint {

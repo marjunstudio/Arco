@@ -72,6 +72,12 @@ android {
                 // targetSdk 36 は AGENTS.md の「動かせない制約」で固定している
                 "OldTargetApi",
             )
+        informational +=
+            setOf(
+                // adaptive icon のテーマアイコン用レイヤー。テンプレートのランチャーアイコンを
+                // 差し替えるときに一緒に用意する
+                "MonochromeLauncherIcon",
+            )
     }
 }
 
