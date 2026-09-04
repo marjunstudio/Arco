@@ -1,3 +1,5 @@
+import dev.detekt.gradle.Detekt
+import dev.detekt.gradle.extensions.FailOnSeverity
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -5,40 +7,42 @@ plugins {
     alias(libs.plugins.androidMultiplatformLibrary)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.detekt)
+    alias(libs.plugins.ktlint)
 }
 
 kotlin {
     listOf(
         iosArm64(),
-        iosSimulatorArm64()
+        iosSimulatorArm64(),
     ).forEach { iosTarget ->
         iosTarget.binaries.framework {
             baseName = "Shared"
             isStatic = true
         }
     }
-    
+
     android {
-       namespace = "com.app.arco.shared"
-       compileSdk = libs.versions.android.compileSdk.get().toInt()
-       minSdk = libs.versions.android.minSdk.get().toInt()
-    
-       compilerOptions {
-           jvmTarget = JvmTarget.JVM_11
-       }
-       androidResources {
-           enable = true
-       }
-       withHostTest {
-           isIncludeAndroidResources = true
-       }
-       withDeviceTestBuilder {
-           sourceSetTreeName = "test"
-       }.configure {
-           instrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-       }
+        namespace = "com.app.arco.shared"
+        compileSdk = libs.versions.android.compileSdk.get().toInt()
+        minSdk = libs.versions.android.minSdk.get().toInt()
+
+        compilerOptions {
+            jvmTarget = JvmTarget.JVM_11
+        }
+        androidResources {
+            enable = true
+        }
+        withHostTest {
+            isIncludeAndroidResources = true
+        }
+        withDeviceTestBuilder {
+            sourceSetTreeName = "test"
+        }.configure {
+            instrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        }
     }
-    
+
     sourceSets {
         androidMain.dependencies {
             implementation(libs.compose.uiToolingPreview)
@@ -62,4 +66,32 @@ kotlin {
 
 dependencies {
     androidRuntimeClasspath(libs.compose.uiTooling)
+}
+
+// TODO: モジュール分割時に build-logic の convention plugin へ移す（:androidApp と重複）
+detekt {
+    buildUponDefaultConfig = true
+    parallel = true
+    failOnSeverity = FailOnSeverity.Warning
+}
+
+// KMP には src/main/kotlin が無いため、既定の :shared:detekt は NO-SOURCE になる。
+// sourceSet ごとのタスクを check に繋いで commonMain / androidMain / iosMain を検査対象にする
+tasks.named("check") {
+    dependsOn(tasks.withType<Detekt>().matching { it.name.endsWith("SourceSet") })
+}
+
+tasks.withType<Detekt>().configureEach {
+    // Compose Resources の生成コードもソースセットに入るため除外する。
+    // パターンは各 srcDir からの相対パスに対して照合されるため、"**/build/**" では当たらない
+    exclude("**/generated/resources/**")
+}
+
+ktlint {
+    version = libs.versions.ktlint
+    filter {
+        // Compose Resources の生成コードもソースセットに入るため除外する。
+        // Spec ラムダはビルドスクリプトを掴んで configuration cache に載らないので、Ant パターンで書く。
+        exclude("**/generated/resources/**")
+    }
 }
