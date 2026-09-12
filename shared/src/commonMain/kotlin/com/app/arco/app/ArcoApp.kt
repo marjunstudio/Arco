@@ -19,7 +19,6 @@ fun ArcoApp() {
     val navigator: AppNavigator = koinInject()
     val tabBridge: AppTabBridge = koinInject()
     val backStack = rememberArcoBackStack()
-    val entryProvider = remember { appEntryProvider() }
 
     // タブの上に詳細画面を積んでも「どのタブにいるか」は変わらないので、
     // 先頭ではなく、末尾から見て最初に見つかるタブの根を現在地とする。
@@ -33,11 +32,12 @@ fun ArcoApp() {
         AppTabScaffold(
             selectedTab = selectedTab,
             onSelectTab = { navigator.moveToTop(it.key) },
-        ) {
+        ) { contentPadding ->
             ArcoNavDisplay(
                 backStack = backStack,
                 onBack = navigator::back,
-                entryProvider = entryProvider,
+                // 余白が変わるのは回転とバーの高さが変わったときだけなので、作り直しは実質起きない
+                entryProvider = remember(contentPadding) { appEntryProvider(contentPadding) },
             )
         }
     }
